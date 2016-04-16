@@ -11,8 +11,10 @@ history = open(join('docs', 'HISTORY.txt')).read()
 
 install_requires = [
     'webob',
-    'mysql-python',
     'cromlech.sqlalchemy',
+    'trilith.admin',
+    'trilith.sql',
+    'trilith.oauth2',
     ]
 
 tests_require = [
