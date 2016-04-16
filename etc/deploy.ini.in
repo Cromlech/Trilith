@@ -32,6 +32,8 @@ format = %(message)s
 [app:main]
 use = egg:Trilith#app
 dsn = ${settings:dsn}
+zcml_file = ${settings:zcml_file}
+accesses = ${settings:accesses}
 
 [server:main]
 use = egg:Paste#http

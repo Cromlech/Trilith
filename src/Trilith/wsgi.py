@@ -8,7 +8,7 @@ from webob import Request
 
 from trilith.admin import manager
 from trilith.sql.oauth2.models import Base
-from trilith.sql.oauth2.storage import Tokens, Grants, Clients, Users
+from trilith.sql.oauth2.stores import Tokens, Grants, Clients, Users
 from trilith.oauth2.validator import OAuth2RequestValidator
 from trilith.oauth2.endpoints import TokenEndpoint
 
@@ -23,7 +23,7 @@ def ATM(validator):
     return oauth2_atm
 
 
-def Application(conf, dsn, admin_accesses, zcml_file):
+def Application(conf, dsn, accesses, zcml_file):
 
     ### Database
     # Bootstrap the SQL connection
@@ -52,6 +52,6 @@ def Application(conf, dsn, admin_accesses, zcml_file):
     router = URLMap()
     router['/oauth2/token'] = ATM(validator)
     router['/manage'] = manager(
-        admin_accesses, zcml_file, users, clients, grants, tokens)
+        accesses, zcml_file, users, clients, grants, tokens)
 
     return router
