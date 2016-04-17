@@ -28,7 +28,9 @@ def Application(conf, dsn, accesses, zcml_file):
     ### Database
     # Bootstrap the SQL connection
     engine = create_engine(dsn, 'trilith')
-    Base.metadata.create_all(engine.engine)
+    Base.metadata.bind = engine.engine
+    with SQLAlchemySession(engine) as s:
+        Base.metadata.create_all()
 
     # Create storages
     users = Users(engine)
