@@ -12,7 +12,6 @@ from trilith.admin import manager
 from trilith.sql.oauth2.models import Base
 from trilith.sql.oauth2.stores import Tokens, Grants, Clients, Users
 from trilith.oauth2.validator import OAuth2RequestValidator
-from trilith.oauth2.endpoints import TokenEndpoint
 
 from oauthlib.oauth2 import BearerToken
 from oauthlib.oauth2 import AuthorizationCodeGrant
