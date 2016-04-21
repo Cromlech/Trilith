@@ -2,11 +2,9 @@
 
 import uuid
 import logging
-import json
 
 from cromlech.sqlalchemy import create_engine, SQLAlchemySession
 from paste.urlmap import URLMap
-from webob import Request, Response
 
 from trilith.admin import manager
 from trilith.sql.oauth2.models import Base
@@ -20,109 +18,14 @@ from oauthlib.oauth2 import ResourceOwnerPasswordCredentialsGrant
 from oauthlib.oauth2 import ClientCredentialsGrant
 from oauthlib.oauth2 import RefreshTokenGrant
 
-from oauthlib.oauth2 import AuthorizationEndpoint
-from oauthlib.oauth2 import TokenEndpoint
-from oauthlib.oauth2 import ResourceEndpoint
-from oauthlib.oauth2 import RevocationEndpoint
+from . import check, discard, ticket, authorization
 
 
 def uuid4_token(request):
     return str(uuid.uuid4())
 
 
-def extract_params(request):
-    headers = dict(request.headers)
-    if 'wsgi.input' in headers:
-        del headers['wsgi.input']
-    if 'wsgi.errors' in headers:
-        del headers['wsgi.errors']
-    body = request.POST.mixed()
-    return request.url, request.method, body, headers
-
-
-def Discarder(validator):
-    
-    endpoint = RevocationEndpoint(validator)
-
-    def oauth2_discarder(environ, start_response):
-        request = Request(environ)
-        uri, http_method, body, headers = extract_params(request)
-        headers, body, status = endpoint.create_revocation_response(
-            uri, http_method, body, headers,
-        )
-        response = Response(headers=headers, body=body, status_int=status)
-        return response(environ, start_response)
-
-    return oauth2_discarder
-
-
-def ATM(validator, expires_in):
-
-    auth_grant = AuthorizationCodeGrant(validator)
-    password_grant = ResourceOwnerPasswordCredentialsGrant(validator)
-    credentials_grant = ClientCredentialsGrant(validator)
-    refresh_grant = RefreshTokenGrant(validator)
-    bearer = BearerToken(validator, uuid4_token, expires_in, uuid4_token)
-    
-    endpoint = TokenEndpoint(
-        default_grant_type='authorization_code',
-        grant_types={
-            'authorization_code': auth_grant,
-            'password': password_grant,
-            'client_credentials': credentials_grant,
-            'refresh_token': refresh_grant,
-        },
-        default_token_type=bearer)
-
-    def oauth2_atm(environ, start_response):
-        request = Request(environ)
-        uri, http_method, body, headers = extract_params(request)
-        credentials = {}
-        headers, body, status = endpoint.create_token_response(
-            uri, http_method, body, headers, credentials
-        )
-        response = Response(headers=headers, body=body, status_int=status)
-        return response(environ, start_response)
-        
-    return oauth2_atm
-
-
-def  Defender(validator, expires_in):
-    bearer = BearerToken(validator, uuid4_token, expires_in, uuid4_token)
-    endpoint = ResourceEndpoint(
-        default_token='Bearer',
-        token_types={'Bearer': bearer})
-
-    def oauth2_defender(environ, start_response):
-        request = Request(environ)
-        uri, http_method, body, headers = extract_params(request)
-        valid, oauth2_request = endpoint.verify_request(
-            uri, http_method, body, headers)
-
-        headers = {
-            'Content-Type': 'application/json',
-        }
-        if not valid:
-            code = 401
-            body = {
-                'error': oauth2_request.error_message
-            }
-        else:
-            code = 200
-            body = {
-                'client_id': oauth2_request.access_token.client_id,
-                'expires': oauth2_request.access_token.expires.strftime(
-                    "%Y-%m-%d %H:%M:%S"),
-            }
-        
-        response = Response(
-            headers=headers, body=json.dumps(body), status_int=code)
-        return response(environ, start_response)
-
-    return oauth2_defender
-
-
-def Application(conf, dsn, accesses, zcml_file):
+def Application(conf, dsn, accesses, zcml_file, ticket_ttl):
 
     ### Database
     # Bootstrap the SQL connection
@@ -146,12 +49,23 @@ def Application(conf, dsn, accesses, zcml_file):
         users=users,
     )
 
+    ## Endpoints
+    auth_grant = AuthorizationCodeGrant(validator)
+    bearer = BearerToken(validator, uuid4_token, ticket_ttl, uuid4_token)
+    credentials_grant = ClientCredentialsGrant(validator)
+    implicit_grant = ImplicitGrant(validator)
+    password_grant = ResourceOwnerPasswordCredentialsGrant(validator)
+    refresh_grant = RefreshTokenGrant(validator)
+
     ### WSGI
     # Routing
     router = URLMap()
-    router['/oauth2/token'] = ATM(validator, expires_in=300)
-    router['/oauth2/guard'] = Defender(validator, expires_in=300)
-    router['/oauth2/trash'] = Discarder(validator)
+    router['/oauth2/cashier'] = ticket.ATM(
+        auth_grant, password_grant, credentials_grant, refresh_grant, bearer)
+    router['/oauth2/sentinel'] = check.Defender(bearer)
+    router['/oauth2/shredder'] = discard.Discarder(bearer)
+    router['/oauth2/bouncer'] = authorization.Bouncer(
+        auth_grant, implicit_grant, bearer)
     router['/manage'] = manager(
         accesses, zcml_file, users, clients, grants, tokens)
 

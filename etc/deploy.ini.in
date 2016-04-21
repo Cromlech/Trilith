@@ -34,6 +34,7 @@ use = egg:Trilith#app
 dsn = ${settings:dsn}
 zcml_file = ${settings:zcml_file}
 accesses = ${settings:accesses}
+ticket_ttl = 300
 
 [server:main]
 use = egg:Paste#http
