@@ -6,7 +6,7 @@ from webob import Request, Response
 
 
 def Discarder(validator):
-    
+
     endpoint = RevocationEndpoint(validator)
 
     def oauth2_discarder(environ, start_response):
@@ -15,6 +15,7 @@ def Discarder(validator):
         headers, body, status = endpoint.create_revocation_response(
             uri, http_method, body, headers,
         )
+
         response = Response(headers=headers, body=body, status_int=status)
         return response(environ, start_response)
 

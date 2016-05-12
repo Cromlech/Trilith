@@ -33,8 +33,9 @@ def Defender(bearer):
                 'client_id': oauth2_request.access_token.client_id,
                 'expires': oauth2_request.access_token.expires.strftime(
                     "%Y-%m-%d %H:%M:%S"),
+                'scopes': tuple(oauth2_request.access_token.scope),
             }
-        
+
         response = Response(
             headers=headers, body=json.dumps(body), status_int=code)
         return response(environ, start_response)

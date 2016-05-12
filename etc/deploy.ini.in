@@ -35,6 +35,7 @@ dsn = ${settings:dsn}
 zcml_file = ${settings:zcml_file}
 accesses = ${settings:accesses}
 ticket_ttl = 300
+sessions = ${settings:cachedir}/sessions
 
 [server:main]
 use = egg:Paste#http

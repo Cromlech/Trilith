@@ -51,7 +51,7 @@ def Application(conf, dsn, accesses, zcml_file, ticket_ttl):
 
     ## Endpoints
     auth_grant = AuthorizationCodeGrant(validator)
-    bearer = BearerToken(validator, uuid4_token, ticket_ttl, uuid4_token)
+    bearer = BearerToken(validator, uuid4_token, int(ticket_ttl), uuid4_token)
     credentials_grant = ClientCredentialsGrant(validator)
     implicit_grant = ImplicitGrant(validator)
     password_grant = ResourceOwnerPasswordCredentialsGrant(validator)
@@ -63,7 +63,7 @@ def Application(conf, dsn, accesses, zcml_file, ticket_ttl):
     router['/oauth2/cashier'] = ticket.ATM(
         auth_grant, password_grant, credentials_grant, refresh_grant, bearer)
     router['/oauth2/sentinel'] = check.Defender(bearer)
-    router['/oauth2/shredder'] = discard.Discarder(bearer)
+    router['/oauth2/shredder'] = discard.Discarder(validator)
     router['/oauth2/bouncer'] = authorization.Bouncer(
         auth_grant, implicit_grant, bearer)
     router['/manage'] = manager(
